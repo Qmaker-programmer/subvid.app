@@ -1,5 +1,5 @@
-import { $, $$ } from "./dom.ts"
-import { formatClock } from "./subtitles.ts"
+import { $, $$ } from "@/scripts/dom.ts"
+import { formatClock } from "@/scripts/subtitles.ts"
 
 type TimelineOptions = {
   ui: any

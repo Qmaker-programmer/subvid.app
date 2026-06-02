@@ -1,4 +1,4 @@
-import { $$ } from "./dom.ts"
+import { $$ } from "@/scripts/dom.ts"
 
 export const FONT_STACKS: Record<string, string> = {
   sans: '"Outfit", "Segoe UI", system-ui, sans-serif',

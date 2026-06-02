@@ -2,8 +2,8 @@ import {
   builtInBackendLabel,
   resolveTranslationBackend,
   translateCuesBuiltIn,
-} from "./builtInTranslate.ts"
-import { LANGS, TRANSLATION_MODEL } from "./languages.ts"
+} from "@/scripts/builtInTranslate.ts"
+import { LANGS, TRANSLATION_MODEL } from "@/scripts/languages.ts"
 
 type TranslationServiceOptions = {
   downloads: any

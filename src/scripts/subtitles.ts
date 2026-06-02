@@ -1,4 +1,4 @@
-import { LANGS } from "./languages.ts"
+import { LANGS } from "@/scripts/languages.ts"
 
 export type SubtitleSegment = {
   start: number

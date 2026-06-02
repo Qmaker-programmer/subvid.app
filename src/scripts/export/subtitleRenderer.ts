@@ -1,4 +1,4 @@
-import { captionStyle, FONT_STACKS, hexToRgba } from "../subtitleStyle.ts"
+import { captionStyle, FONT_STACKS, hexToRgba } from "@/scripts/subtitleStyle.ts"
 
 export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   const words = text.split(/\s+/)

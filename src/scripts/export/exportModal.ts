@@ -1,4 +1,4 @@
-import { $ } from "../dom.ts"
+import { $ } from "@/scripts/dom.ts"
 
 export function createExportModal({ ui, tt, isExporting }: any) {
   const EXPORT_STEPS = [

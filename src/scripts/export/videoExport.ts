@@ -1,4 +1,4 @@
-import { drawFrame, drawSubtitlesAt } from "./subtitleRenderer.ts"
+import { drawFrame, drawSubtitlesAt } from "@/scripts/export/subtitleRenderer.ts"
 
 type VideoExportOptions = {
   ui: any

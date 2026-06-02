@@ -1,23 +1,23 @@
 import {
   hasBuiltInTranslationSupport,
-} from "./builtInTranslate.ts"
-import { createDownloadsController } from "./downloads.ts"
-import { createEditorSegmentsController } from "./editorSegments.ts"
-import { createExportModal } from "./export/exportModal.ts"
-import { createVideoExporter } from "./export/videoExport.ts"
-import { createAudioService } from "./media/audio.ts"
-import { I18N, langName, tt } from "./i18n.ts"
-import { ASR_MODEL, LANGS } from "./languages.ts"
+} from "@/scripts/builtInTranslate.ts"
+import { createDownloadsController } from "@/scripts/downloads.ts"
+import { createEditorSegmentsController } from "@/scripts/editorSegments.ts"
+import { createExportModal } from "@/scripts/export/exportModal.ts"
+import { createVideoExporter } from "@/scripts/export/videoExport.ts"
+import { createAudioService } from "@/scripts/media/audio.ts"
+import { I18N, langName, tt } from "@/scripts/i18n.ts"
+import { ASR_MODEL, LANGS } from "@/scripts/languages.ts"
 import {
   buildSrt,
   normalizeLanguageCode,
   normalizeSegments,
-} from "./subtitles.ts"
-import { createSubtitleStyleController } from "./subtitleStyle.ts"
-import { createTimelineController } from "./timeline.ts"
-import { createTransformersClient } from "./transformersClient.ts"
-import { createTranslationService } from "./translation.ts"
-import { ui } from "./ui.ts"
+} from "@/scripts/subtitles.ts"
+import { createSubtitleStyleController } from "@/scripts/subtitleStyle.ts"
+import { createTimelineController } from "@/scripts/timeline.ts"
+import { createTransformersClient } from "@/scripts/transformersClient.ts"
+import { createTranslationService } from "@/scripts/translation.ts"
+import { ui } from "@/scripts/ui.ts"
 
 type Segment = { start: number; end: number; text: string }
 type SegmentsByLang = Record<string, Segment[]>

@@ -1,4 +1,4 @@
-import { $ } from "./dom.ts"
+import { $ } from "@/scripts/dom.ts"
 
 export const ui = {
   app: $("#app"),

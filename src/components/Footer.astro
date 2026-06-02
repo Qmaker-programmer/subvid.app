@@ -1,9 +1,8 @@
 ---
-import HeartIcon from "../assets/svg/heart.svg"
-import GitHubIcon from "../assets/svg/github.svg"
-import DollarIcon from "../assets/svg/dollar.svg"
-import { languages, defaultLang, toLang } from "../i18n/ui"
-import { useTranslations } from "../i18n/ui"
+import HeartIcon from "@/assets/svg/heart.svg"
+import GitHubIcon from "@/assets/svg/github.svg"
+import DollarIcon from "@/assets/svg/dollar.svg"
+import { languages, defaultLang, toLang, useTranslations } from "@/i18n/ui"
 
 const t = useTranslations(Astro.currentLocale)
 const current = toLang(Astro.currentLocale)
@@ -56,7 +55,7 @@ const localePath = (code: string) => (code === defaultLang ? "/" : `/${code}/`)
 </footer>
 
 <script is:inline>
-  // Persist an explicit language choice so the middleware stops auto-detecting
+  // Persist an explicit language choice so the edge redirect stops auto-detecting
   // and respects the user's decision on future visits to the root.
   document.querySelectorAll(".footer-lang-link").forEach((link) => {
     link.addEventListener("click", () => {

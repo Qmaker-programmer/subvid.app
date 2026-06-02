@@ -1,6 +1,6 @@
-import { $, $$ } from "./dom.ts"
-import { LANGS } from "./languages.ts"
-import { formatClock, parseClock } from "./subtitles.ts"
+import { $, $$ } from "@/scripts/dom.ts"
+import { LANGS } from "@/scripts/languages.ts"
+import { formatClock, parseClock } from "@/scripts/subtitles.ts"
 
 type EditorState = {
   detectedLang: string
