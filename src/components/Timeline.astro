@@ -5,6 +5,8 @@ import Volume from "@/assets/svg/volume.svg"
 import VolumeMute from "@/assets/svg/volume-mute.svg"
 import Fullscreen from "@/assets/svg/fullscreen.svg"
 import FullscreenExit from "@/assets/svg/fullscreen-exit.svg"
+import ZoomIn from "@/assets/svg/zoom-in.svg"
+import ZoomOut from "@/assets/svg/zoom-out.svg"
 import { useTranslations } from "@/i18n/ui"
 
 const t = useTranslations(Astro.currentLocale)
@@ -58,14 +60,18 @@ const t = useTranslations(Astro.currentLocale)
           id="tl-zoom-out"
           class="tl-zoom-btn"
           type="button"
-          aria-label={t.timeline.zoomOut}>−</button
+          aria-label={t.timeline.zoomOut}
         >
+          <ZoomOut />
+        </button>
         <button
           id="tl-zoom-in"
           class="tl-zoom-btn"
           type="button"
-          aria-label={t.timeline.zoomIn}>+</button
+          aria-label={t.timeline.zoomIn}
         >
+          <ZoomIn />
+        </button>
       </div>
     </div>
   </div>

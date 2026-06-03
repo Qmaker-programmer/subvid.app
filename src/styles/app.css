@@ -480,6 +480,7 @@ body {
   gap: 2.5rem;
   padding: 1.5rem 0;
   position: relative;
+  isolation: isolate;
 }
 
 /* Soft ambient glow drifting behind the hero — sets the mood without noise.
@@ -487,7 +488,7 @@ body {
 .stage-aurora {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   overflow: hidden;
 }
@@ -501,12 +502,12 @@ body {
   transform: translate(-50%, -50%);
   background:
     radial-gradient(
-      32% 38% at 32% 34%,
+      32% 38% at 68% 34%,
       rgba(184, 240, 96, 0.13),
       transparent 70%
     ),
     radial-gradient(
-      34% 40% at 70% 60%,
+      34% 40% at 30% 60%,
       rgba(96, 150, 250, 0.1),
       transparent 70%
     );
@@ -516,8 +517,45 @@ body {
     aurora-in 1.2s ease 0.1s forwards,
     aurora-drift 18s ease-in-out 1.3s infinite alternate;
 }
+.stage-bg-icon {
+  position: absolute;
+  width: clamp(8rem, 15vw, 15rem);
+  height: auto;
+  color: #b8f060;
+  opacity: 0;
+  transform: rotate(var(--icon-rotate-from, -8deg));
+  transform-origin: center;
+  filter: drop-shadow(0 0 30px rgba(184, 240, 96, 0.12));
+  animation:
+    bg-icon-in 1.6s ease 0.25s forwards,
+    bg-icon-drift 13s ease-in-out 1.2s infinite alternate;
+}
+.stage-bg-icon--video {
+  --icon-opacity: 0.055;
+  --icon-rotate-from: 9deg;
+  --icon-rotate-to: 6deg;
+  --icon-drift-x: -0.25rem;
+  --icon-drift-y: -0.55rem;
+  right: max(1rem, calc(50% - 29rem));
+  top: 21%;
+}
+.stage-bg-icon--subtitles {
+  --icon-opacity: 0.048;
+  --icon-rotate-from: -10deg;
+  --icon-rotate-to: -7deg;
+  --icon-drift-x: 0.3rem;
+  --icon-drift-y: 0.6rem;
+  left: max(1.25rem, calc(50% - 28rem));
+  top: 34%;
+  width: clamp(8.5rem, 17vw, 16rem);
+  color: #6096fa;
+  filter: drop-shadow(0 0 30px rgba(96, 150, 250, 0.1));
+  animation-delay: 0.45s, 1.55s;
+}
 
 .hero {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -626,6 +664,7 @@ body {
 .dropzone {
   position: relative;
   isolation: isolate;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -795,6 +834,7 @@ body {
 }
 .stage-upload .upload-footer {
   position: absolute;
+  z-index: 1;
   left: 0;
   right: 0;
   bottom: 0;
@@ -1285,8 +1325,34 @@ body {
 }
 .editor-actions {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 0.45rem;
+  justify-content: flex-end;
   margin-left: auto;
+}
+.export-options {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.export-field {
+  display: grid;
+  gap: 0.16rem;
+}
+.export-field span {
+  padding-left: 0.12rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #4a546a;
+}
+.export-field select {
+  min-width: 92px;
+  padding-block: 0.3rem;
+  font-size: 0.78rem;
 }
 .editor-history {
   display: flex;
@@ -1335,10 +1401,6 @@ body {
 }
 .generation-time {
   flex: 0 0 auto;
-  padding: 0.28rem 0.58rem;
-  border: 1px solid rgba(184, 240, 96, 0.14);
-  border-radius: 999px;
-  background: rgba(184, 240, 96, 0.06);
   color: #9fcb66;
   font-size: 0.72rem;
   font-weight: 600;
@@ -1353,11 +1415,11 @@ body {
 }
 .editor-main {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto;
-  gap: 0.6rem;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0;
   min-width: 0;
   min-height: 0;
-  padding: 1rem;
+  overflow: hidden;
 }
 
 /* Controls */
@@ -1471,9 +1533,7 @@ select:focus {
   position: relative;
   min-height: 0;
   background: #000;
-  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #181d28;
 }
 video {
   width: 100%;
@@ -1645,8 +1705,7 @@ video {
   gap: 0.6rem;
   padding: 0.6rem 0.7rem;
   background: #0a0d12;
-  border: 1px solid #181d28;
-  border-radius: 12px;
+  border-top: 1px solid #181d28;
 }
 .style-bar-head {
   display: flex;
@@ -2410,6 +2469,11 @@ video {
   border-color: #2e3a52;
   color: #e2e6ee;
 }
+.tl-zoom-btn svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
 /* Icon swapping for the moved controls, driven by .timeline state classes. */
 #vp-mute .ic-mute,
 .timeline.is-muted #vp-mute .ic-vol {
@@ -2482,24 +2546,25 @@ video {
   position: absolute;
   left: 0;
   right: 0;
-  top: 34px;
+  top: 40px;
   height: 64px;
 }
 .tl-track-row {
   position: absolute;
   left: 0;
   right: 0;
-  height: 58px;
+  height: 72px;
 }
 .tl-track-controls {
-  position: absolute;
-  top: 0;
+  position: sticky;
   left: 0.55rem;
-  z-index: 2;
+  z-index: 3;
   display: inline-flex;
   align-items: center;
   gap: 0.18rem;
   max-width: 260px;
+  margin-top: 0.1rem;
+  margin-left: 0.55rem;
   padding: 0.12rem 0.32rem;
   border-radius: 999px;
   background: rgba(8, 10, 14, 0.86);
@@ -2557,8 +2622,8 @@ video {
 }
 .tl-block {
   position: absolute;
-  top: 0;
-  height: 100%;
+  top: 28px;
+  height: calc(100% - 30px);
   background: linear-gradient(180deg, #1a2738, #131c29);
   border: 1px solid #2e3a52;
   border-radius: 7px;
@@ -2572,8 +2637,8 @@ video {
     background 120ms ease;
 }
 .timeline.is-multitrack .tl-block {
-  top: 18px;
-  height: 36px;
+  top: 28px;
+  height: 40px;
 }
 .tl-block:hover {
   border-color: #3d4d6b;
@@ -2803,9 +2868,29 @@ video {
     transform: translate(-46%, -54%) rotate(8deg) scale(1.08);
   }
 }
+@keyframes bg-icon-in {
+  to {
+    opacity: var(--icon-opacity, 0.5);
+  }
+}
+@keyframes bg-icon-drift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(var(--icon-rotate-from, -8deg))
+      scale(1);
+  }
+  to {
+    transform: translate3d(
+        var(--icon-drift-x, 1rem),
+        var(--icon-drift-y, -1rem),
+        0
+      )
+      rotate(var(--icon-rotate-to, 0deg)) scale(1.018);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .stage-aurora::before,
+  .stage-bg-icon,
   .hero-badge,
   .hero-badge-dot,
   .hero-word,
@@ -2827,6 +2912,9 @@ video {
   }
   .stage-aurora::before {
     opacity: 1 !important;
+  }
+  .stage-bg-icon {
+    opacity: var(--icon-opacity, 0.5) !important;
   }
   .hero-mark-text {
     -webkit-text-fill-color: #f4f7fc;

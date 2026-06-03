@@ -53,9 +53,11 @@ export function createTimelineController(options: TimelineOptions) {
     enableExports,
   } = options
   const TL_MIN_DUR = 0.3
-  const TL_HEADER_H = 34
-  const TL_ROW_H = 58
+  const TL_HEADER_H = 40
+  const TL_ROW_H = 72
   const TL_SCROLL_PAD = 22
+  const TL_MIN_ZOOM = 12
+  const TL_MAX_ZOOM = 400
   const SCRUB_SEEK_MIN_INTERVAL = 45
   const SCRUB_SEEK_EPSILON = 0.025
   let tlPxPerSec = 90
@@ -203,6 +205,47 @@ export function createTimelineController(options: TimelineOptions) {
       ui.timelineBlocks.appendChild(row)
     })
     updateTimelinePlayhead()
+  }
+
+  function zoomTimeline(scale: number, anchorClientX?: number) {
+    const nextPxPerSec = Math.max(
+      TL_MIN_ZOOM,
+      Math.min(TL_MAX_ZOOM, tlPxPerSec * scale),
+    )
+    if (nextPxPerSec === tlPxPerSec) return
+
+    const view = ui.timelineScroll as HTMLElement | null
+    let anchorTime: number | null = null
+    let anchorOffset = 0
+    if (view && typeof anchorClientX === "number") {
+      const rect = view.getBoundingClientRect()
+      anchorOffset = anchorClientX - rect.left
+      anchorTime = (view.scrollLeft + anchorOffset) / tlPxPerSec
+    }
+
+    tlPxPerSec = nextPxPerSec
+    renderTimeline()
+
+    if (view && anchorTime !== null) {
+      view.scrollLeft = Math.max(0, anchorTime * tlPxPerSec - anchorOffset)
+    }
+  }
+
+  function timelineWheelDeltaPx(event: WheelEvent) {
+    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16
+    if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE)
+      return event.deltaY * (ui.timelineScroll?.clientHeight || window.innerHeight)
+    return event.deltaY
+  }
+
+  function handleTimelineWheelZoom(event: WheelEvent) {
+    if (!event.metaKey) return
+    const deltaY = timelineWheelDeltaPx(event)
+    if (!deltaY) return
+
+    event.preventDefault()
+    const clampedDelta = Math.max(-500, Math.min(500, deltaY))
+    zoomTimeline(2 ** (-clampedDelta / 500), event.clientX)
   }
 
   function updateTimelinePlayhead(timeOverride?: number) {
@@ -629,14 +672,11 @@ export function createTimelineController(options: TimelineOptions) {
     document.addEventListener("webkitfullscreenchange", syncFullscreenUi)
     syncVolumeUi()
 
-    ui.tlZoomIn?.addEventListener("click", () => {
-      tlPxPerSec = Math.min(400, tlPxPerSec * 1.4)
-      renderTimeline()
+    ui.timelineScroll?.addEventListener("wheel", handleTimelineWheelZoom, {
+      passive: false,
     })
-    ui.tlZoomOut?.addEventListener("click", () => {
-      tlPxPerSec = Math.max(12, tlPxPerSec / 1.4)
-      renderTimeline()
-    })
+    ui.tlZoomIn?.addEventListener("click", () => zoomTimeline(1.4))
+    ui.tlZoomOut?.addEventListener("click", () => zoomTimeline(1 / 1.4))
     ui.video.addEventListener("loadedmetadata", () => {
       tlDuration = Number.isFinite(ui.video.duration) ? ui.video.duration : 0
       renderTimeline()
