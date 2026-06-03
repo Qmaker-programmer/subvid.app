@@ -45,6 +45,11 @@ export function createExportModal({ ui, tt, isExporting }: any) {
     if (el) el.dataset.state = state
   }
 
+  function setExportNotice(message: string) {
+    ui.exportError.textContent = message
+    ui.exportError.hidden = !message
+  }
+
   function failExport(message: string) {
     setExportStage(tt("exportStages.failed"), "error")
     ui.exportError.textContent = message
@@ -59,6 +64,7 @@ export function createExportModal({ ui, tt, isExporting }: any) {
     setExportStage,
     setExportProgress,
     setExportStep,
+    setExportNotice,
     failExport,
   }
 }

@@ -46,6 +46,23 @@ const t = useTranslations(Astro.currentLocale)
         <Download />
         {t.editor.downloadSrt}
       </button>
+      <div class="export-options" aria-label={t.editor.videoExportOptions}>
+        <label class="export-field" for="export-format">
+          <span>{t.editor.videoFormat}</span>
+          <select id="export-format" name="export-format">
+            <option value="mp4">{t.editor.formatMp4}</option>
+            <option value="webm">{t.editor.formatWebm}</option>
+          </select>
+        </label>
+        <label class="export-field" for="export-quality">
+          <span>{t.editor.videoQuality}</span>
+          <select id="export-quality" name="export-quality">
+            <option value="optimized">{t.editor.qualityOptimized}</option>
+            <option value="high">{t.editor.qualityHigh}</option>
+            <option value="lossless">{t.editor.qualityLossless}</option>
+          </select>
+        </label>
+      </div>
       <button
         id="download-video-btn"
         class="btn-soft btn-soft--primary"

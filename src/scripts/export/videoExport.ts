@@ -14,6 +14,56 @@ type VideoExportOptions = {
   modal: any
 }
 
+type WebCodecsExportResult =
+  | { handled: true }
+  | { handled: false; reason: string }
+
+type ExportFormat = "mp4" | "webm"
+type ExportQuality = "optimized" | "high" | "lossless"
+type ExportSettings = {
+  format: ExportFormat
+  quality: ExportQuality
+}
+
+const EXPORT_FORMATS = new Set<ExportFormat>(["mp4", "webm"])
+const EXPORT_QUALITIES = new Set<ExportQuality>([
+  "optimized",
+  "high",
+  "lossless",
+])
+const RECORDER_MIME_TYPES: Record<ExportFormat, string[]> = {
+  mp4: [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4;codecs=h264,aac",
+    "video/mp4",
+  ],
+  webm: [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+  ],
+}
+const QUALITY_BITS_PER_PIXEL: Record<ExportQuality, number> = {
+  optimized: 0.07,
+  high: 0.13,
+  lossless: 0.24,
+}
+const QUALITY_MIN_BITRATE: Record<ExportQuality, number> = {
+  optimized: 350_000,
+  high: 1_000_000,
+  lossless: 8_000_000,
+}
+const QUALITY_MAX_BITRATE: Record<ExportQuality, number> = {
+  optimized: 18_000_000,
+  high: 36_000_000,
+  lossless: 80_000_000,
+}
+const QUALITY_SOURCE_MULTIPLIER: Record<ExportQuality, number> = {
+  optimized: 1.15,
+  high: 2,
+  lossless: Number.POSITIVE_INFINITY,
+}
+
 export function createVideoExporter(options: VideoExportOptions) {
   const {
     ui,
@@ -29,30 +79,145 @@ export function createVideoExporter(options: VideoExportOptions) {
     modal,
   } = options
 
-  function canUseWebCodecs() {
-    return (
-      typeof VideoEncoder !== "undefined" &&
-      typeof VideoDecoder !== "undefined" &&
-      typeof OffscreenCanvas !== "undefined"
+  function errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error || "unknown error")
+  }
+
+  function formatDiagnostic(value: unknown) {
+    if (!value) return tt("exportErrors.diagnosticUnavailable")
+    if (typeof value === "string") return value
+    try {
+      const serialized = JSON.stringify(value)
+      return serialized || tt("exportErrors.diagnosticUnavailable")
+    } catch {
+      return String(value)
+    }
+  }
+
+  function getWebCodecsSupportIssue() {
+    const missingApis = [
+      typeof VideoEncoder === "undefined" ? "VideoEncoder" : "",
+      typeof VideoDecoder === "undefined" ? "VideoDecoder" : "",
+      typeof OffscreenCanvas === "undefined" ? "OffscreenCanvas" : "",
+    ].filter(Boolean)
+
+    if (missingApis.length) {
+      return tt("exportErrors.webcodecsMissingApis", {
+        apis: missingApis.join(", "),
+      })
+    }
+
+    if (!selectedVideoFile()) return tt("exportErrors.webcodecsMissingFile")
+    return ""
+  }
+
+  function exportSettings(): ExportSettings {
+    const rawFormat = ui.exportFormat?.value
+    const rawQuality = ui.exportQuality?.value
+    return {
+      format: EXPORT_FORMATS.has(rawFormat) ? rawFormat : "mp4",
+      quality: EXPORT_QUALITIES.has(rawQuality) ? rawQuality : "optimized",
+    }
+  }
+
+  function setExportControlsDisabled(disabled: boolean) {
+    ui.downloadVideoBtn.disabled = disabled
+    ui.downloadSrtBtn.disabled = disabled
+    ui.exportFormat.disabled = disabled
+    ui.exportQuality.disabled = disabled
+  }
+
+  function sourceBitrateFor(duration: number) {
+    const file = selectedVideoFile()
+    if (!file || !Number.isFinite(duration) || duration <= 0) return 0
+    return Math.round((file.size * 8) / duration)
+  }
+
+  function videoBitrateFor(quality: ExportQuality, width: number, height: number) {
+    const pixels = Math.max(640 * 360, (width || 1280) * (height || 720))
+    const resolutionBitrate = Math.round(
+      pixels * 30 * QUALITY_BITS_PER_PIXEL[quality],
     )
+    const sourceBitrate = sourceBitrateFor(ui.video.duration)
+    const sourceAwareMax = sourceBitrate
+      ? Math.round(sourceBitrate * QUALITY_SOURCE_MULTIPLIER[quality])
+      : Number.POSITIVE_INFINITY
+    const bitrate = Math.min(resolutionBitrate, sourceAwareMax)
+    const targetBitrate = Math.max(
+      QUALITY_MIN_BITRATE[quality],
+      Math.min(QUALITY_MAX_BITRATE[quality], bitrate),
+    )
+    console.info("[export] video bitrate target", {
+      quality,
+      sourceBitrate,
+      targetBitrate,
+      width,
+      height,
+    })
+    return Math.max(
+      QUALITY_MIN_BITRATE[quality],
+      Math.min(QUALITY_MAX_BITRATE[quality], targetBitrate),
+    )
+  }
+
+  function recorderMimeType(format: ExportFormat) {
+    return RECORDER_MIME_TYPES[format].find((mimeType) =>
+      MediaRecorder.isTypeSupported(mimeType),
+    )
+  }
+
+  async function webCodecsVideoCodec(
+    mediabunny: any,
+    settings: ExportSettings,
+    bitrate: number,
+  ) {
+    const candidates = settings.format === "mp4" ? ["avc"] : ["vp9", "vp8"]
+    for (const codec of candidates) {
+      try {
+        const supported = await mediabunny.canEncodeVideo?.(codec, {
+          width: ui.video.videoWidth || undefined,
+          height: ui.video.videoHeight || undefined,
+          bitrate,
+        })
+        if (supported) return codec
+      } catch {}
+    }
+    return candidates[0]
+  }
+
+  function downloadBlob(blob: Blob, settings: ExportSettings) {
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `${baseFileName()}.${activeLang()}.${settings.format}`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   async function downloadVideo() {
     const segments = currentSegments()
     if (!segments.length || isExporting()) return
 
+    const settings = exportSettings()
     setExporting(true)
-    ui.downloadVideoBtn.disabled = true
-    ui.downloadSrtBtn.disabled = true
+    setExportControlsDisabled(true)
     ui.transcribeBtn.disabled = true
     ui.backBtn.disabled = true
 
     try {
-      if (canUseWebCodecs() && selectedVideoFile()) {
-        const handled = await exportWithWebCodecs(segments)
-        if (handled) return
+      let fallbackReason = getWebCodecsSupportIssue()
+      if (!fallbackReason) {
+        const result = await exportWithWebCodecs(segments, settings)
+        if (result.handled) return
+        fallbackReason = result.reason
       }
-      await exportWithRecorder(segments)
+      if (fallbackReason) {
+        console.warn(
+          "[export] WebCodecs unavailable; using recorder fallback:",
+          fallbackReason,
+        )
+      }
+      await exportWithRecorder(segments, settings, fallbackReason)
     } finally {
       setExporting(false)
       ui.backBtn.disabled = false
@@ -61,13 +226,21 @@ export function createVideoExporter(options: VideoExportOptions) {
     }
   }
 
-  async function exportWithWebCodecs(segments: any[]) {
+  async function exportWithWebCodecs(
+    segments: any[],
+    settings: ExportSettings,
+  ): Promise<WebCodecsExportResult> {
     let mediabunny: any
     try {
       mediabunny = await import("mediabunny")
     } catch (e) {
       console.warn("[export] mediabunny failed to load, falling back", e)
-      return false
+      return {
+        handled: false,
+        reason: tt("exportErrors.mediabunnyLoadFailed", {
+          error: errorMessage(e),
+        }),
+      }
     }
 
     const {
@@ -77,6 +250,7 @@ export function createVideoExporter(options: VideoExportOptions) {
       BlobSource,
       ALL_FORMATS,
       Mp4OutputFormat,
+      WebMOutputFormat,
       BufferTarget,
     } = mediabunny
 
@@ -85,14 +259,35 @@ export function createVideoExporter(options: VideoExportOptions) {
     modal.setExportStage(tt("exportStages.preparingEncoder"), "busy")
     ui.exportHint.textContent = tt("exportStages.renderingLocally")
 
+    const file = selectedVideoFile()
+    if (!file) {
+      return {
+        handled: false,
+        reason: tt("exportErrors.webcodecsMissingFile"),
+      }
+    }
+
     const input = new Input({
-      source: new BlobSource(selectedVideoFile()),
+      source: new BlobSource(file),
       formats: ALL_FORMATS,
     })
     const output = new Output({
-      format: new Mp4OutputFormat(),
+      format:
+        settings.format === "mp4"
+          ? new Mp4OutputFormat()
+          : new WebMOutputFormat(),
       target: new BufferTarget(),
     })
+    const videoBitrate = videoBitrateFor(
+      settings.quality,
+      ui.video.videoWidth,
+      ui.video.videoHeight,
+    )
+    const videoCodec = await webCodecsVideoCodec(
+      mediabunny,
+      settings,
+      videoBitrate,
+    )
 
     let canvas: any = null
     let ctx: any = null
@@ -103,7 +298,10 @@ export function createVideoExporter(options: VideoExportOptions) {
         input,
         output,
         video: {
-          codec: "avc",
+          codec: videoCodec,
+          bitrate: videoBitrate,
+          latencyMode: "quality",
+          keyFrameInterval: settings.quality === "optimized" ? 4 : 2,
           process: (sample: any) => {
             if (!ctx) {
               canvas = new OffscreenCanvas(
@@ -126,7 +324,12 @@ export function createVideoExporter(options: VideoExportOptions) {
       })
     } catch (e) {
       console.warn("[export] WebCodecs init failed, falling back", e)
-      return false
+      return {
+        handled: false,
+        reason: tt("exportErrors.webcodecsInitFailed", {
+          error: errorMessage(e),
+        }),
+      }
     }
 
     if (!conversion.isValid) {
@@ -134,7 +337,12 @@ export function createVideoExporter(options: VideoExportOptions) {
         "[export] WebCodecs conversion invalid, falling back",
         conversion.discardedTracks,
       )
-      return false
+      return {
+        handled: false,
+        reason: tt("exportErrors.webcodecsInvalid", {
+          tracks: formatDiagnostic(conversion.discardedTracks),
+        }),
+      }
     }
 
     conversion.onProgress = (p: number) => {
@@ -149,12 +357,12 @@ export function createVideoExporter(options: VideoExportOptions) {
       await conversion.execute()
     } catch (e: any) {
       console.error(e)
-      modal.failExport(
-        tt("exportErrors.webcodecsFailed", {
-          error: e?.message || "unknown error",
+      return {
+        handled: false,
+        reason: tt("exportErrors.webcodecsFailed", {
+          error: errorMessage(e),
         }),
-      )
-      return true
+      }
     }
 
     modal.setExportStep("render", "done")
@@ -162,13 +370,10 @@ export function createVideoExporter(options: VideoExportOptions) {
     modal.setExportStep("done", "active")
     modal.setExportStage(tt("exportStages.saving"), "busy")
 
-    const blob = new Blob([output.target.buffer], { type: "video/mp4" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `${baseFileName()}.${activeLang()}.mp4`
-    link.click()
-    URL.revokeObjectURL(url)
+    const blob = new Blob([output.target.buffer], {
+      type: `video/${settings.format}`,
+    })
+    downloadBlob(blob, settings)
 
     modal.setExportStep("done", "done")
     modal.setExportProgress(100)
@@ -177,13 +382,20 @@ export function createVideoExporter(options: VideoExportOptions) {
     ui.exportHint.hidden = true
     ui.exportClose.hidden = false
     setStatus(tt("videoExported"), "ok")
-    return true
+    return { handled: true }
   }
 
-  async function exportWithRecorder(segments: any[]) {
+  async function exportWithRecorder(
+    segments: any[],
+    settings: ExportSettings,
+    fallbackReason = "",
+  ) {
     const video = ui.video
 
     modal.openExportModal()
+    if (fallbackReason) {
+      modal.setExportNotice(tt("exportStages.webcodecsFallbackNotice"))
+    }
 
     const capture = video.captureStream
       ? video.captureStream.bind(video)
@@ -191,7 +403,11 @@ export function createVideoExporter(options: VideoExportOptions) {
         ? video.mozCaptureStream.bind(video)
         : null
     if (!capture || typeof MediaRecorder === "undefined") {
-      modal.failExport(tt("exportErrors.noSupport"))
+      modal.failExport(
+        fallbackReason
+          ? tt("exportErrors.noSupportAfterFallback")
+          : tt("exportErrors.noSupport"),
+      )
       return
     }
 
@@ -214,17 +430,20 @@ export function createVideoExporter(options: VideoExportOptions) {
       console.warn("No audio track for the export", e)
     }
 
-    const mimeType =
-      [
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm",
-      ].find((m) => MediaRecorder.isTypeSupported(m)) || "video/webm"
+    const mimeType = recorderMimeType(settings.format)
+    if (!mimeType) {
+      modal.failExport(
+        tt("exportErrors.formatNotSupported", {
+          format: settings.format.toUpperCase(),
+        }),
+      )
+      return
+    }
     let recorder: MediaRecorder
     try {
       recorder = new MediaRecorder(canvasStream, {
         mimeType,
-        videoBitsPerSecond: 8_000_000,
+        videoBitsPerSecond: videoBitrateFor(settings.quality, w, h),
       })
     } catch (e) {
       console.error(e)
@@ -242,13 +461,8 @@ export function createVideoExporter(options: VideoExportOptions) {
         modal.setExportStep("render", "done")
         modal.setExportStep("encode", "active")
         modal.setExportStage(tt("exportStages.generatingFile"), "busy")
-        const blob = new Blob(chunks, { type: "video/webm" })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement("a")
-        link.href = url
-        link.download = `${baseFileName()}.${activeLang()}.webm`
-        link.click()
-        URL.revokeObjectURL(url)
+        const blob = new Blob(chunks, { type: mimeType })
+        downloadBlob(blob, settings)
         resolve()
       }
     })

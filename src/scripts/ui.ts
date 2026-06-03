@@ -38,6 +38,8 @@ export const ui = {
   segCount: $("#seg-count"),
   addSegBtn: $<HTMLButtonElement>("#add-seg-btn"),
   transcribeBtn: $<HTMLButtonElement>("#transcribe-btn"),
+  exportFormat: $<HTMLSelectElement>("#export-format"),
+  exportQuality: $<HTMLSelectElement>("#export-quality"),
   downloadVideoBtn: $<HTMLButtonElement>("#download-video-btn"),
   downloadSrtBtn: $<HTMLButtonElement>("#download-srt-btn"),
   backBtn: $<HTMLButtonElement>("#back-btn"),

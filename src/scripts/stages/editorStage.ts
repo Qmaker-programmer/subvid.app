@@ -39,6 +39,8 @@ export function createEditorStageController({
     const ready = on && currentSegments().length > 0
     ui.downloadSrtBtn.disabled = !ready
     ui.downloadVideoBtn.disabled = !ready
+    ui.exportFormat.disabled = !ready
+    ui.exportQuality.disabled = !ready
   }
 
   function backToConfig() {
