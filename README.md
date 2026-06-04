@@ -1,8 +1,28 @@
+<div align="center">
+
 # subvid.app
 
-Generate, edit, translate, and export subtitles for any video — entirely in your browser. No uploads, no backend, no API keys.
+**Generate, edit, translate, and export subtitles for any video — entirely in your browser.**
 
-**Live site:** [subvid.app](https://subvid.app) · **Repository:** [github.com/midudev/subvid.app](https://github.com/midudev/subvid.app)
+No uploads. No backend. No API keys.
+
+<a href="https://subvid.app">🌐 Live site</a> ·
+<a href="https://github.com/midudev/subvid.app">📦 Repository</a> ·
+<a href="#getting-started">🚀 Getting started</a>
+
+<br />
+
+<img width="900" alt="subvid.app — subtitle editor with timeline and live preview" src="https://github.com/user-attachments/assets/6a4463ce-9cf7-4053-a193-97104080b6a7" />
+
+<br />
+<br />
+
+[![Astro](https://img.shields.io/badge/Astro-6-FF5D01?logo=astro&logoColor=white)](https://astro.build)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Whisper](https://img.shields.io/badge/AI-Whisper-412991?logo=openai&logoColor=white)](https://huggingface.co/Xenova/whisper-base)
+[![Cloudflare Workers](https://img.shields.io/badge/Deploy-Cloudflare_Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
+
+</div>
 
 ## What it does
 
