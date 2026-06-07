@@ -149,11 +149,13 @@ export function createUploadStageController({
     // Hide video preview and export options for audio-only files
     if (isAudio) {
       ui.configPreview.style.display = "none";
+      ui.videoPreview.style.display = "none";
       ui.downloadVideoBtn.style.display = "none";
       ui.exportFormat.closest("label")?.setAttribute("style", "display: none");
       ui.exportQuality.closest("label")?.setAttribute("style", "display: none");
     } else {
       ui.configPreview.style.display = "";
+      ui.videoPreview.style.display = "";
       ui.downloadVideoBtn.style.display = "";
       ui.exportFormat.closest("label")?.removeAttribute("style");
       ui.exportQuality.closest("label")?.removeAttribute("style");
