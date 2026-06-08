@@ -16,6 +16,18 @@ import { env, pipeline } from "@huggingface/transformers";
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
+// Completely disable WebGPU to avoid detection issues
+// Force WASM/CPU backend only
+if (typeof navigator !== "undefined" && (navigator as any).gpu) {
+  // Hide GPU from transformers.js to force WASM
+  Object.defineProperty(navigator, "gpu", {
+    get: function () {
+      return undefined;
+    },
+    configurable: true,
+  });
+}
+
 let recognizer: any = null;
 let recognizerDevice: "webgpu" | "wasm" = "wasm";
 let recognizerModel: string = "";
@@ -28,104 +40,29 @@ self.onmessage = async (event: MessageEvent) => {
   try {
     if (type === "ensure-asr") {
       if (!recognizer) {
-        const baseOptions: any = {
-          progress_callback: (p: any) =>
-            post({ type: "progress", key: "asr", payload: p }),
-        };
-
-        // Try WebGPU first if requested
-        if (payload?.webgpu) {
-          try {
-            console.info("[ASR] attempting to load Whisper on WebGPU");
-            recognizer = await pipeline(
-              "automatic-speech-recognition",
-              payload.model,
-              {
-                ...baseOptions,
-                device: "webgpu",
-                dtype: {
-                  encoder_model: "fp32",
-                  decoder_model_merged: "fp32",
-                },
-              },
-            );
-            recognizerDevice = "webgpu";
-            recognizerModel = payload.model;
-            console.info("[ASR] Whisper loaded successfully on WebGPU");
-          } catch (error: any) {
-            const errorMsg = error?.message || String(error);
-            console.warn(
-              "[ASR] WebGPU failed, falling back to WASM/CPU:",
-              errorMsg,
-            );
-            recognizer = null;
-          }
-        }
-
-        // Fallback to WASM/CPU if WebGPU failed or wasn't requested
-        if (!recognizer) {
-          console.info("[ASR] loading Whisper on WASM/CPU backend");
-          recognizer = await pipeline(
-            "automatic-speech-recognition",
-            payload.model,
-            {
-              ...baseOptions,
-              dtype: {
-                encoder_model: "fp32",
-                decoder_model_merged: "fp32",
-              },
-            },
-          );
-          recognizerDevice = "wasm";
-          recognizerModel = payload.model;
-          console.info("[ASR] Whisper loaded successfully on WASM/CPU");
-        }
+        console.info("[ASR] loading Whisper model");
+        recognizer = await pipeline(
+          "automatic-speech-recognition",
+          payload.model,
+          {
+            progress_callback: (p: any) =>
+              post({ type: "progress", key: "asr", payload: p }),
+            dtype: "fp32", // Force non-quantized model for compatibility
+          },
+        );
+        recognizerDevice = "wasm";
+        recognizerModel = payload.model;
+        console.info("[ASR] Whisper model loaded successfully");
       }
       post({ id, type: "done" });
     } else if (type === "transcribe") {
-      let output;
-      try {
-        output = await recognizer(payload.audio, {
-          chunk_length_s: 30,
-          stride_length_s: 5,
-          return_timestamps: payload.wordTimestamps ? "word" : true,
-          language: payload.language || null,
-          chunk_callback: () => post({ type: "chunk" }),
-        });
-      } catch (error: any) {
-        // If transcription fails on WebGPU, try reloading on WASM/CPU
-        if (recognizerDevice === "webgpu") {
-          const errorMsg = error?.message || String(error);
-          console.warn(
-            "[ASR] Transcription failed on WebGPU, retrying on WASM/CPU:",
-            errorMsg,
-          );
-          const model = recognizerModel || "Xenova/whisper-base";
-          recognizer = null;
-          const baseOptions: any = {
-            progress_callback: (p: any) =>
-              post({ type: "progress", key: "asr", payload: p }),
-          };
-          recognizer = await pipeline("automatic-speech-recognition", model, {
-            ...baseOptions,
-            dtype: {
-              encoder_model: "fp32",
-              decoder_model_merged: "fp32",
-            },
-          });
-          recognizerDevice = "wasm";
-          console.info("[ASR] Retrying transcription on WASM/CPU");
-          output = await recognizer(payload.audio, {
-            chunk_length_s: 30,
-            stride_length_s: 5,
-            return_timestamps: payload.wordTimestamps ? "word" : true,
-            language: payload.language || null,
-            chunk_callback: () => post({ type: "chunk" }),
-          });
-        } else {
-          throw error;
-        }
-      }
+      const output = await recognizer(payload.audio, {
+        chunk_length_s: 30,
+        stride_length_s: 5,
+        return_timestamps: payload.wordTimestamps ? "word" : true,
+        language: payload.language || null,
+        chunk_callback: () => post({ type: "chunk" }),
+      });
       post({ id, type: "done", result: output });
     } else {
       post({ id, type: "error", error: `Unknown message type: ${type}` });
