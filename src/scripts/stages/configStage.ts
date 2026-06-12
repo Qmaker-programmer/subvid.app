@@ -572,9 +572,13 @@ export function createConfigStageController({
         normalizeLanguageCode(output?.language) ||
         normalizeLanguageCode(ui.inputLang.value) ||
         "en"
+      const vw = ui.configVideo?.videoWidth || ui.video?.videoWidth || 0
+      const vh = ui.configVideo?.videoHeight || ui.video?.videoHeight || 0
+      const aspectRatio = vw && vh ? vw / vh : 16 / 9
       const baseSegments = normalizeSegments(output, {
         audio,
         sampleRate: 16_000,
+        aspectRatio,
       })
       logGeneration("segments:ready", {
         detectedLang,
