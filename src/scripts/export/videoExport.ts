@@ -321,6 +321,13 @@ export function createVideoExporter(options: VideoExportOptions) {
             return canvas
           },
         },
+        // For MP4, force a full re-encode of the audio as AAC-LC at 44100 Hz.
+        // Without forceTranscode, mediabunny may copy the source audio track as-is
+        // (fast path). If the source contains Opus or HE-AAC, QuickTime will show
+        // an "incompatible content" warning and play the file without audio.
+        audio: settings.format === "mp4"
+          ? { sampleRate: 44100, forceTranscode: true }
+          : {},
       })
     } catch (e) {
       console.warn("[export] WebCodecs init failed, falling back", e)
@@ -341,6 +348,26 @@ export function createVideoExporter(options: VideoExportOptions) {
         handled: false,
         reason: tt("exportErrors.webcodecsInvalid", {
           tracks: formatDiagnostic(conversion.discardedTracks),
+        }),
+      }
+    }
+
+    // Audio tracks can be silently dropped when the browser can't encode the required
+    // codec (e.g. AAC for MP4). isValid stays true because MP4 doesn't require audio,
+    // so we have to catch this separately and fall back to the recorder which captures
+    // audio directly from the video element.
+    const droppedAudio = conversion.discardedTracks.some(
+      (t: any) => t.track?.type === "audio" && t.reason !== "discarded_by_user",
+    )
+    if (droppedAudio) {
+      console.warn(
+        "[export] Audio track dropped in WebCodecs path, falling back to recorder",
+        conversion.discardedTracks,
+      )
+      return {
+        handled: false,
+        reason: tt("exportErrors.webcodecsInvalid", {
+          tracks: "audio",
         }),
       }
     }
